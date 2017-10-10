@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: List
+items:
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: monitoring
+- apiVersion: extensions/v1beta1
+  kind: Deployment
+  metadata:
+    name: prometheus
+    namespace: monitoring
+  spec:
+    replicas: 1
+    template:
+      metadata:
+        labels:
+          app: prometheus
+      spec:
+        containers:
+        - name: prometheus
+          image: prom/prometheus
+          args:
+            - '-config.file=/prometheus/config/prometheus.yml'
+            - '-storage.local.path=/prometheus/data'
+            - '-storage.local.retention=768h'
+          volumeMounts:
+            - mountPath: /prometheus/data
+              name: iscsipd-prom-rw
+            - mountPath: /prometheus/config
+              name: prom-config
+          resources:
+            limits:
+              memory: 200M
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 9090
+            initialDelaySeconds: 1
+            timeoutSeconds: 1
+            periodSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 9090
+            initialDelaySeconds: 1
+            timeoutSeconds: 1
+            periodSeconds: 3
+        volumes:
+          - name: iscsipd-prom-rw
+            iscsi:
+              targetPortal: 192.168.255.10:3260
+              portals: ['192.168.255.11:3260', '192.168.255.12:3260', '192.168.255.13:3260', '192.168.255.14:3260']
+              iqn: iqn.2001-05.com.equallogic:0-8a0906-6e0b41907-3790000001f59bdb-k8s.prometheus
+              lun: 0
+              fsType: ext4
+              readOnly: false
+          - name: prom-config
+            configMap:
+              name: prometheus
+              items:
+              - key: prometheus.yml
+                path: prometheus.yml
+- kind: Service
+  apiVersion: v1
+  metadata:
+    name: prometheus
+    namespace: monitoring
+  spec:
+    clusterIP: 10.97.10.10
+    selector:
+      app: prometheus
+    ports:
+      - protocol: TCP
+        port: 9090
+        targetPort: 9090
