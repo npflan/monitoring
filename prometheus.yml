@@ -7,6 +7,7 @@ items:
     labels:
       app: prometheus
     name: prometheus
+    namespace: monitoring
   spec:
     replicas: 1
     template:
@@ -77,6 +78,7 @@ items:
   kind: Service
   metadata:
     name: prometheus
+    namespace: monitoring
   spec:
     ports:
     - port: 80
@@ -142,6 +144,11 @@ items:
             - targets:
               - 'localhost:9090'
 
+        - job_name: 'pushgateway'
+          static_configs:
+              - targets:
+                - 'pushgateway.monitoring.svc.cluster.local:80'
+
         - job_name: 'dns'
           dns_sd_configs:
           - refresh_interval: 15s
@@ -171,6 +178,10 @@ items:
           - source_labels: [__address__]
             regex:         '(.*):[0-9]+'
             target_label:  '__param_target'
+            replacement:   '$1'
+          - source_labels: [__address__]
+            regex:         '.+\.([de][0-9]{1,2}).access.npf:[0-9]+'
+            target_label:  'dist'
             replacement:   '$1'
           - target_label: __address__
             replacement: blackbox-exporter.monitoring.svc.cluster.local
@@ -215,8 +226,13 @@ items:
             regex:         '(.*):[0-9]+'
             target_label:  '__param_target'
             replacement:   '$1'
+          - source_labels: [__address__]
+            regex:         '.+\.([de][0-9]{1,2}).access.npf:[0-9]+'
+            target_label:  'dist'
+            replacement:   '$1'
           - target_label: __address__
             replacement: snmp-exporter.monitoring.svc.cluster.local
   kind: ConfigMap
   metadata:
     name: prometheus
+    namespace: monitoring
