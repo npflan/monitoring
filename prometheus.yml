@@ -101,7 +101,7 @@ items:
             summary = "ICMP probing failed for {{ $labels.instance }}",
         }
       ALERT multiple_uplink_ports_active
-        IF (sum(ifOperStatus{ifDescr=~"GigabitEthernet.*",job="snmp-access"}) BY (instance) == 2)
+        IF (sum(ifOperStatus{instance=~".{3}\\..+.access.npf", ifDescr=~"GigabitEthernet.*",job="snmp-access"}) BY (instance) == 2)
         ANNOTATIONS {
             summary = "Both uplink ports are active on {{ $labels.instance }}",
         }
