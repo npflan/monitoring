@@ -149,6 +149,15 @@ items:
               - targets:
                 - 'pushgateway.monitoring.svc.cluster.local:80'
 
+        - job_name: 'dhcp'
+          scrape_interval: 60s
+          scrape_timeout: 60s
+          metrics_path: '/'
+          static_configs:
+              - targets:
+                - 'dhcp-primary.dhcp.svc.cluster.local:9405'
+                - 'dhcp-secondary.dhcp.svc.cluster.local:9405'
+
         - job_name: 'dns'
           dns_sd_configs:
           - refresh_interval: 15s
