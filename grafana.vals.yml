@@ -6,7 +6,7 @@ server:
 
   ## Grafana Docker image
   ##
-  image: "grafana/grafana:latest"
+  image: "grafana/grafana:4.5.2"
 
   nodeSelector: {}
   tolerations: []
@@ -165,7 +165,7 @@ server:
   ## This will pass each plugin name to `grafana-cli plugins install ${plugin}`.
   ## Ref: https://github.com/grafana/grafana-docker#installing-plugins-for-grafana-3
   ##
-  # installPlugins:
+  installPlugins: grafana-clock-panel,grafana-simple-json-datasource,grafana-worldmap-panel,jdbranham-diagram-panel
 
   # Set datasource in beginning
   setDatasource:

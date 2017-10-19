@@ -6,6 +6,7 @@ metadata:
   labels:
     type: iscsi
 spec:
+  persistentVolumeReclaimPolicy: Retain
   storageClassName: manual
   capacity:
     storage: 10Gi
