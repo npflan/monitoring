@@ -10,7 +10,7 @@ kind: ServiceAccount
 metadata:
   labels:
     app: kube-eagle
-  name: sa-kube-eagle
+  name: kube-eagle
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 ---
