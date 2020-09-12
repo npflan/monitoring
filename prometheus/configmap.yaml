@@ -1,0 +1,258 @@
+apiVersion: v1
+data:
+  alert.rules: |
+    groups:
+    - name: access
+      rules:
+      - alert: IcmpProbingFailed
+        expr: probe_success == 0
+        for: 1m
+        labels:
+          severity: page
+        annotations:
+          summary: "ICMP probing failed for {{ $labels.instance }}"
+      - alert: MultipleUplinks
+        expr: sum(ifOperStatus{instance=~".{3}\\..+.access.npf", ifDescr=~"GigabitEthernet.*",job="snmp-access"}) BY (instance) == 2
+        for: 1m
+        annotations:
+          summary: "Both uplink ports are active on {{ $labels.instance }}"
+      - alert: LowUplinkSpeed
+        expr: ifOperStatus{job="snmp-access"} == 1 and ifSpeed{job="snmp-access"} != 1000000000
+        for: 1m
+        annotations:
+          summary: "Instance {{ $labels.instance }} uplink speed is low"
+    - name: dist
+      rules:
+      - alert: MissingPowerRedundancy
+        expr: ciscoEnvMonSupplyState != 1
+        for: 1m
+        annotations:
+          summary: "Redundent power not available for {{ $labels.instance }}"
+    - name: services
+      rules:
+      - alert: ServiceDown
+        expr: up{job!="snmp-access"} == 0
+        for: 3m
+        annotations:
+          summary: "Can not pull data from job {{ $labels.job }} on instance {{ $labels.instance }}"
+
+  prometheus.yaml: |
+    global:
+      scrape_interval:     15s # By default, scrape targets every 15 seconds.
+      evaluation_interval: 15s # By default, scrape targets every 15 seconds.
+      external_labels:
+          monitor: 'NPF'
+
+    rule_files:
+      - "alert.rules"
+
+    alerting:
+      alertmanagers:
+      - static_configs:
+        - targets:
+          - 'alertmanager.prometheus.svc.cluster.local'
+
+    scrape_configs:
+          #  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+      - job_name: 'prometheus'
+          #    # Override the global default and scrape targets from this job every 5 seconds.
+        scrape_interval: 5s
+        metrics_path: '/metrics'
+        static_configs:
+          - targets:
+            - 'localhost:9090'
+
+      - job_name: 'ping'
+        dns_sd_configs:
+        - refresh_interval: 15s
+          names:
+          - 'telemetry.access.npf'
+          - 'telemetry.c2940.access.npf'
+          - 'telemetry.dist.npf'
+          type: 'SRV'
+        metrics_path: '/probe'
+        params:
+          module: [icmp]
+        relabel_configs:
+        - source_labels: ['__address__']
+          regex:         '(.*):[0-9]+'
+          target_label:  'instance'
+          replacement:   '$1'
+        - source_labels: [__address__]
+          regex:         '(.*):[0-9]+'
+          target_label:  '__param_target'
+          replacement:   '$1'
+        - source_labels: [__address__]
+          regex:         '.+\.([de][0-9]{1,2}).access.npf:[0-9]+'
+          target_label:  'dist'
+          replacement:   '$1'
+        - target_label: __address__
+          replacement: blackbox-exporter.prometheus.svc.cluster.local
+
+      - job_name: 'snmp-servers'
+        static_configs:
+        - targets:
+          - avatar.npf
+          - ragnarok.npf
+          - erebus.npf
+          - leviathan.npf
+        metrics_path: /snmp
+        params:
+          module: [servers]
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: __param_target
+          - source_labels: [__param_target]
+            target_label: instance
+          - target_label: __address__
+            replacement: snmp-exporter.prometheus.svc.cluster.local
+
+      - job_name: 'snmp-dist'
+        dns_sd_configs:
+        - refresh_interval: 15s
+          names:
+          - 'telemetry.dist.npf'
+          type: 'SRV'
+        metrics_path: '/snmp'
+        params:
+          module: [dist]
+        relabel_configs:
+        - source_labels: ['__address__']
+          regex:         '(.*):[0-9]+'
+          target_label:  'instance'
+          replacement:   '$1'
+        - source_labels: [__address__]
+          regex:         '(.*):[0-9]+'
+          target_label:  '__param_target'
+          replacement:   '$1'
+        - target_label: __address__
+          replacement: snmp-exporter.prometheus.svc.cluster.local
+
+      - job_name: 'snmp-access'
+        scrape_interval: 15s
+        dns_sd_configs:
+        - refresh_interval: 15s
+          names:
+          - 'telemetry.access.npf'
+          type: 'SRV'
+        metrics_path: '/snmp'
+        params:
+          module: [access]
+        relabel_configs:
+        - source_labels: ['__address__']
+          regex:         '(.*):[0-9]+'
+          target_label:  'instance'
+          replacement:   '$1'
+        - source_labels: [__address__]
+          regex:         '(.*):[0-9]+'
+          target_label:  '__param_target'
+          replacement:   '$1'
+        - source_labels: [__address__]
+          regex:         '.+\.([de][0-9]{1,2}).access.npf:[0-9]+'
+          target_label:  'dist'
+          replacement:   '$1'
+        - target_label: __address__
+          replacement: snmp-exporter.prometheus.svc.cluster.local
+
+      - job_name: 'kubernetes-service-endpoints'
+        kubernetes_sd_configs:
+        - role: endpoints
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+          action: keep
+          regex: true
+        - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_metric_path]
+          action: replace
+          target_label: __metrics_path__
+          regex: (.+)
+        - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+          action: replace
+          regex: ([^:]+)(?::\d+)?;(\d+)
+          replacement: $1:$2
+          target_label: __address__
+
+        - action: labelmap
+          regex: __meta_kubernetes_service_label_(.+)
+        - source_labels: [__meta_kubernetes_namespace]
+          action: replace
+          target_label: kubernetes_namespace
+        - source_labels: [__meta_kubernetes_service_name]
+          action: replace
+          target_label: kubernetes_name
+
+      - job_name: 'kubernetes-apiservers'
+        kubernetes_sd_configs:
+        - role: endpoints
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+          action: keep
+          regex: default;kubernetes;https
+
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+        - role: pod
+        relabel_configs:
+        - action: keep
+          regex: true
+          source_labels:
+          - __meta_kubernetes_pod_annotation_prometheus_io_scrape
+        - action: replace
+          regex: (.+)
+          source_labels:
+          - __meta_kubernetes_pod_annotation_prometheus_io_path
+          target_label: __metrics_path__
+        - action: replace
+          regex: ([^:]+)(?::\d+)?;(\d+)
+          replacement: $1:$2
+          source_labels:
+          - __address__
+          - __meta_kubernetes_pod_annotation_prometheus_io_port
+          target_label: __address__
+        - action: labelmap
+          regex: __meta_kubernetes_pod_label_(.+)
+        - action: replace
+          source_labels:
+          - __meta_kubernetes_namespace
+          target_label: kubernetes_namespace
+        - action: replace
+          source_labels:
+          - __meta_kubernetes_pod_name
+          target_label: kubernetes_pod_name 
+
+      - job_name: 'current-pi'
+
+        metrics_path: '/'
+        static_configs:
+        - targets: ['10.2.16.4'] # pi-1
+        - targets: ['10.1.250.5'] # pi-2
+        - targets: ['10.7.248.4'] # pi-3
+        - targets: ['10.7.13.5'] # pi-4
+        - targets: ['10.7.13.97'] # pi-5
+        - targets: ['10.12.250.8'] # pi-6
+        - targets: ['10.12.250.4'] # pi-7
+        - targets: ['10.12.250.5'] # pi-8
+        - targets: ['10.11.12.9'] # pi-9
+        - targets: ['10.9.250.6'] # pi-10
+        - targets: ['10.12.11.5'] # pi-11
+        - targets: ['10.252.250.6'] # pi-12
+        - targets: ['10.252.250.7'] # pi-13
+        - targets: ['10.13.248.5'] # pi-14
+        - targets: ['10.13.250.5'] # pi-15
+        - targets: ['10.13.250.4'] # pi-16
+        - targets: ['10.13.250.6'] # pi-17
+        - targets: ['10.13.248.6'] # pi-18
+        - targets: ['10.9.250.5'] # pi-19
+        - targets: ['10.9.250.4'] # pi-20
+        - targets: ['10.8.250.4'] # pi-21
+        - targets: ['10.8.250.5'] # pi-22
+        - targets: ['10.251.248.19'] # pi-23
+        - targets: ['10.251.248.20'] # pi-24
+
+kind: ConfigMap
+metadata:
+  name: prometheus
+  namespace: prometheus

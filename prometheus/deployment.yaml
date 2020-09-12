@@ -1,0 +1,141 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: prometheus-core
+  namespace: prometheus
+  labels:
+    app: prometheus
+    component: core
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: prometheus-main
+      labels:
+        app: prometheus
+        component: core
+      annotations:
+        prometheus.io/path: '/metrics'
+        prometheus.io/port: '50053'
+        prometheus.io/scrape: 'true'
+    spec:
+      terminationGracePeriodSeconds: 120
+      securityContext:
+        fsGroup: 2000
+        runAsUser: 1000
+        runAsNonRoot: true
+      serviceAccountName: prometheus
+      containers:
+      - name: prometheus
+        image: prom/prometheus:v2.21.0
+        args:
+          - '--storage.tsdb.retention=365d'
+          - '--config.file=/etc/prometheus/prometheus.yaml'
+          - '--storage.tsdb.path=/etc/prometheus/data'
+          - '--web.console.libraries=/etc/prometheus/console_libraries'
+          - '--web.console.templates=/etc/prometheus/consoles'
+          - '--web.enable-lifecycle'
+          - '--log.format=json'
+          - '--web.enable-admin-api'
+        ports:
+        - name: webui
+          containerPort: 9090
+        resources:
+          requests:
+            cpu: "1"
+            memory: 500M
+          limits:
+            cpu: "4"
+            memory: 5000M
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/prometheus
+        - name: prom-data
+          mountPath: /etc/prometheus/data
+
+      - name: storage-exporter
+        image: npflan/prometheus-storage-exporter:latest
+        env:
+        - name: "PATH"
+          value: "/prometheus/data"
+        ports:
+          - containerPort: 9405
+        volumeMounts:
+         - mountPath: /prometheus/data
+           name: prom-data
+
+      - name: prometheus-server-configmap-reload
+        image: jimmidyson/configmap-reload:v0.2.2
+        imagePullPolicy: IfNotPresent
+        args:
+        - --volume-dir=/etc/config
+        - --webhook-url=http://127.0.0.1:9090/-/reload
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/config
+          name: config-volume
+          readOnly: true
+
+      - name: exporter-merger
+        image: quay.io/rebuy/exporter-merger@sha256:a528eec40cd1c5f5db34457bff3f16b6a009c23ced17007ca3fdf125fdfe64da
+        resources:
+          requests:
+            memory: 32Mi
+            cpu: 10m
+          limits:
+            memory: 64Mi
+            cpu: 100m
+        ports:
+        - containerPort: 50053
+        env:
+        - name: MERGER_VERBOSE
+          value: "false"
+        - name: MERGER_URLS
+          value: http://localhost:9090/metrics http://localhost:9405/metrics
+        - name: MERGER_PORT
+          value: "50053"
+
+      volumes:
+      - name: config-volume
+        configMap:
+          name: prometheus
+      - name: prom-data
+        persistentVolumeClaim:
+          claimName: prom-pvc
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: prom-pv
+spec:
+  capacity:
+    storage: 50Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: prometheus
+  local:
+    path: /kube/prometheus
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - erebus
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: prom-pvc
+  namespace: prometheus
+spec:
+  storageClassName: prometheus
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
