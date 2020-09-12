@@ -30,7 +30,7 @@ spec:
       serviceAccountName: prometheus
       containers:
       - name: prometheus
-        image: quay.io/prometheus/prometheus:v2.21.1
+        image: quay.io/prometheus/prometheus:v2.21.0
         args:
           - '--storage.tsdb.retention=365d'
           - '--config.file=/etc/prometheus/prometheus.yaml'
