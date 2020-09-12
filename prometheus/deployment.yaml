@@ -75,7 +75,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: prom
+  name: prometheus
 spec:
   capacity:
     storage: 50Gi
@@ -98,7 +98,7 @@ spec:
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: prom
+  name: prometheus
   namespace: prometheus
 spec:
   storageClassName: prometheus
