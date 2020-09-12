@@ -10,8 +10,7 @@ kind: ServiceAccount
 metadata:
   labels:
     app: kube-eagle
-  name: kube-eagle
-  namespace: kube-eagle
+  name: sa-kube-eagle
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 ---
@@ -21,7 +20,6 @@ metadata:
   labels:
     app: kube-eagle
   name: kube-eagle
-  namespace: kube-eagle
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 rules:
@@ -48,13 +46,12 @@ metadata:
   labels:
     app: kube-eagle
   name: kube-eagle
-  namespace: kube-eagle
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 subjects:
   - kind: ServiceAccount
     name: kube-eagle
-    namespace: monitoring
+    namespace: kube-eagle
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -64,17 +61,17 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kube-eagle
-  namespace: kube-eagle
   labels:
     app: kube-eagle
+  namspace: kube-eagle
   annotations:
     argocd.argoproj.io/sync-wave: "3"
+
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: kube-eagle
-      release: kube-eagle
   template:
     metadata:
       annotations:
@@ -83,7 +80,6 @@ spec:
         prometheus.io/path: "/metrics"
       labels:
         app: kube-eagle
-        release: kube-eagle
     spec:
       securityContext:
         fsGroup: 99
@@ -91,7 +87,7 @@ spec:
       serviceAccountName: kube-eagle
       containers:
         - name: kube-eagle
-          image: quay.io/google-cloud-tools/kube-eagle:1.1.4
+          image: "quay.io/google-cloud-tools/kube-eagle:1.1.4"
           imagePullPolicy: IfNotPresent
           env:
             - name: TELEMETRY_HOST
