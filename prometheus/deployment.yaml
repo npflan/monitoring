@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/component: core
   annotations:
   name: prometheus
-  namespace: monitoring
+  namespace: prometheus
 spec:
   minReadySeconds: 30
   replicas: 1
