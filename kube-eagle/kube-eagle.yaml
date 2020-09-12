@@ -63,10 +63,9 @@ metadata:
   name: kube-eagle
   labels:
     app: kube-eagle
-  namspace: kube-eagle
+  namespace: kube-eagle
   annotations:
     argocd.argoproj.io/sync-wave: "3"
-
 spec:
   replicas: 1
   selector:
