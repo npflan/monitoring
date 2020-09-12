@@ -225,3 +225,5 @@ kind: ConfigMap
 metadata:
   name: prometheus
   namespace: prometheus
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
