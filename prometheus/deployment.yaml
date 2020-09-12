@@ -104,7 +104,7 @@ metadata:
   name: prometheus
   namespace: prometheus
   annotations:
-    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   storageClassName: prometheus
   accessModes:
