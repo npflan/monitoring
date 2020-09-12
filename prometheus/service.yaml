@@ -4,8 +4,8 @@ metadata:
   name: prometheus
   namespace: prometheus
   labels:
-    app: prometheus
-    component: core
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: core
 spec:
   clusterIP: 10.97.10.10
   ports:
@@ -13,5 +13,5 @@ spec:
       protocol: TCP
       name: webui
   selector:
-    app: prometheus
-    component: core
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: core

@@ -94,8 +94,6 @@ data:
         - targets:
           - avatar.npf
           - ragnarok.npf
-          - erebus.npf
-          - leviathan.npf
         metrics_path: /snmp
         params:
           module: [servers]
@@ -221,36 +219,7 @@ data:
         - action: replace
           source_labels:
           - __meta_kubernetes_pod_name
-          target_label: kubernetes_pod_name 
-
-      - job_name: 'current-pi'
-
-        metrics_path: '/'
-        static_configs:
-        - targets: ['10.2.16.4'] # pi-1
-        - targets: ['10.1.250.5'] # pi-2
-        - targets: ['10.7.248.4'] # pi-3
-        - targets: ['10.7.13.5'] # pi-4
-        - targets: ['10.7.13.97'] # pi-5
-        - targets: ['10.12.250.8'] # pi-6
-        - targets: ['10.12.250.4'] # pi-7
-        - targets: ['10.12.250.5'] # pi-8
-        - targets: ['10.11.12.9'] # pi-9
-        - targets: ['10.9.250.6'] # pi-10
-        - targets: ['10.12.11.5'] # pi-11
-        - targets: ['10.252.250.6'] # pi-12
-        - targets: ['10.252.250.7'] # pi-13
-        - targets: ['10.13.248.5'] # pi-14
-        - targets: ['10.13.250.5'] # pi-15
-        - targets: ['10.13.250.4'] # pi-16
-        - targets: ['10.13.250.6'] # pi-17
-        - targets: ['10.13.248.6'] # pi-18
-        - targets: ['10.9.250.5'] # pi-19
-        - targets: ['10.9.250.4'] # pi-20
-        - targets: ['10.8.250.4'] # pi-21
-        - targets: ['10.8.250.5'] # pi-22
-        - targets: ['10.251.248.19'] # pi-23
-        - targets: ['10.251.248.20'] # pi-24
+          target_label: kubernetes_pod_name
 
 kind: ConfigMap
 metadata:
