@@ -28,6 +28,10 @@ spec:
         app.kubernetes.io/component: core
     spec:
       serviceAccountName: prometheus
+      securityContext:
+        fsGroup: 2000
+        runAsUser: 1000
+        runAsNonRoot: true
       containers:
       - name: prometheus
         image: quay.io/prometheus/prometheus:v2.21.0
