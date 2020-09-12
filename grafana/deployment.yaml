@@ -1,0 +1,109 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: grafana
+  labels:
+    app: grafana
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - erebus
+      containers:
+      - image: grafana/grafana:6.3.5
+        name: grafana
+        imagePullPolicy: IfNotPresent
+        resources:
+          # keep request = limit to keep this container in guaranteed class
+          limits:
+            cpu: 2000m
+            memory: 512Mi
+          requests:
+            cpu: 200m
+            memory: 256Mi
+        env:
+          - name: GF_INSTALL_PLUGINS
+            value: "jdbranham-diagram-panel,grafana-clock-panel,snuids-radar-panel,grafana-piechart-panel"
+          - name: GF_AUTH_ANONYMOUS_ENABLED
+            value: "true"
+          - name: GF_AUTH_BASIC_ENABLED
+            value: "true"
+          - name: GF_SESSION_SESSION_LIFE_TIME
+            value: "604800"
+          - name: GF_USERS_ALLOW_SIGN_UP
+            value: "true"
+          - name: GF_PANELS_DISABLE_SANITIZE_HTML
+            value: "true"
+          - name: GF_SERVER_DOMAIN
+            value: "dash.npf"
+          - name: GF_SERVER_PROTOCOL
+            value: "http"
+        readinessProbe:
+          httpGet:
+            path: /login
+            port: 3000
+        volumeMounts:
+        - mountPath: /var/lib/grafana
+          name: grafana-storage
+          subPath: grafana
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 472
+        runAsNonRoot: true
+        runAsUser: 65534
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: grafana-storage
+        persistentVolumeClaim:
+          claimName: grafana
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  annotations: {}
+  name: grafana
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 20Gi
+  local:
+    path: /kube/grafana
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - erebus
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: grafana
+  volumeMode: Filesystem
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: grafana
+  namespace: grafana
+spec:
+  storageClassName: grafana
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
