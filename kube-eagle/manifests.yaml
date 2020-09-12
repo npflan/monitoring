@@ -85,7 +85,6 @@ spec:
         app: kube-eagle
         release: kube-eagle
     spec:
-      priorityClassName: infrastructure
       securityContext:
         fsGroup: 99
         runAsUser: 99
