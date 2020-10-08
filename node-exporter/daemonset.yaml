@@ -32,7 +32,7 @@ spec:
         effect: NoSchedule
       containers:
         - name: prometheus-node-exporter
-          image: "prom/node-exporter:v0.15.2"
+          image: "quay.io/prometheus/node-exporter:v1.0.1"
           imagePullPolicy: "IfNotPresent"
           args:
             - --path.procfs=/host/proc
