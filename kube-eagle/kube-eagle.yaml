@@ -11,6 +11,7 @@ metadata:
   labels:
     app: kube-eagle
   name: kube-eagle
+  namespace: kube-eagle
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 ---
